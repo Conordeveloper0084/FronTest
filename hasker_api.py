@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.errors import RPCError
+from telethon.errors import RPCError, AuthKeyUnregisteredError
 from dotenv import load_dotenv
 
 # =====================
@@ -31,7 +31,8 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 # =====================
 app = FastAPI(title="Hasker API", version="1.0")
 
-_clients = {}
+# session_string -> TelegramClient
+_clients: dict[str, TelegramClient] = {}
 
 # =====================
 # SCHEMAS
@@ -57,23 +58,52 @@ class MessageOut(BaseModel):
 # UTILS
 # =====================
 async def get_client(session_string: str) -> TelegramClient:
+    # 🔁 Agar oldin ulangan bo‘lsa
     if session_string in _clients:
         client = _clients[session_string]
         if client.is_connected():
+            print("♻️ Reusing existing client")
             return client
+
+    print("🔌 Creating new TelegramClient")
 
     client = TelegramClient(
         StringSession(session_string),
         API_ID,
         API_HASH,
     )
-    await client.connect()
 
-    if not await client.is_user_authorized():
-        raise HTTPException(status_code=401, detail="Session invalid")
+    try:
+        await client.connect()
+    except Exception as e:
+        print("❌ CONNECT ERROR:", e)
+        raise HTTPException(status_code=400, detail="Telegram connect error")
+
+    try:
+        authorized = await client.is_user_authorized()
+        print("🔐 AUTHORIZED:", authorized)
+    except AuthKeyUnregisteredError:
+        authorized = False
+
+    if not authorized:
+        # ⚠️ Session noto‘g‘ri YOKI band
+        raise HTTPException(
+            status_code=409,
+            detail="SESSION_IN_USE_OR_INVALID"
+        )
 
     _clients[session_string] = client
     return client
+
+
+async def drop_client(session_string: str):
+    client = _clients.pop(session_string, None)
+    if client:
+        try:
+            await client.disconnect()
+            print("🧹 Client disconnected")
+        except Exception:
+            pass
 
 # =====================
 # ROUTES
@@ -88,8 +118,16 @@ async def connect(session: SessionIn):
             "username": me.username,
             "id": me.id,
         }
+    except HTTPException:
+        raise
     except RPCError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/disconnect")
+async def disconnect(session: SessionIn):
+    await drop_client(session.session)
+    return {"ok": True}
 
 
 @app.post("/dialogs", response_model=List[DialogOut])
@@ -106,14 +144,6 @@ async def dialogs(session: SessionIn):
         ))
 
     return result
-
-@app.get("/")
-def root():
-    return {"status": "Hasker API is running"}
-
-@app.get("/health")
-def health():
-    return {"ok": True}
 
 
 @app.post("/messages/{dialog_id}", response_model=List[MessageOut])
@@ -139,5 +169,13 @@ async def messages(dialog_id: int, session: SessionIn):
             media_path=media_path,
         ))
 
-    # eski → yangi
     return list(reversed(msgs))
+
+
+@app.get("/")
+def root():
+    return {"status": "Hasker API is running"}
+
+@app.get("/health")
+def health():
+    return {"ok": True}
