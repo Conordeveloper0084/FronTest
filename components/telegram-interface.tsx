@@ -1,12 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Search, Menu, Send, MoreVertical, Phone, Info, Hash, Users, ArrowLeft } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 type ChatType = "channel" | "group" | "private"
@@ -50,229 +48,209 @@ const MOCK_CHATS: Chat[] = [
 ]
 
 export function TelegramInterface() {
-  const [selectedChat, setSelectedChat] = React.useState<Chat | null>(null)
-  const [activeTab, setActiveTab] = React.useState<string>("all")
-  const [isMobileListVisible, setIsMobileListVisible] = React.useState(true)
-  const [isConnected, setIsConnected] = React.useState(false)
-  const [sessionString, setSessionString] = React.useState("")
-
-  const filteredChats = MOCK_CHATS.filter((chat) => {
-    if (activeTab === "all") return true
-    if (activeTab === "channels") return chat.type === "channel"
-    if (activeTab === "groups") return chat.type === "group"
-    if (activeTab === "privates") return chat.type === "private"
-    return true
+  const [view, setView] = React.useState<"login" | "menu" | "messages">("login")
+  const [currentCategory, setCurrentCategory] = React.useState<"Channels" | "Groups" | "Private Chats" | null>(null)
+  const [dialogs, setDialogs] = React.useState<{ channels: any[]; groups: any[]; privates: any[] }>({
+    channels: [],
+    groups: [],
+    privates: [],
   })
+  const [messages, setMessages] = React.useState<any[]>([])
+  const [selectedChat, setSelectedChat] = React.useState<any>(null)
+  const [sessionString, setSessionString] = React.useState("")
+  const [error, setError] = React.useState("")
+  const [isLoading, setIsLoading] = React.useState(false)
 
-  if (!isConnected) {
+  // 1 - connect_client() logic
+  const handleConnect = async () => {
+    setIsLoading(true)
+    setError("")
+    // Using simulated action based on your Python code
+    if (sessionString.length > 10) {
+      // Simulate successful load_dialogs()
+      setDialogs({
+        channels: [
+          { id: "c1", name: "News Channel" },
+          { id: "c2", name: "Tech Updates" },
+        ],
+        groups: [{ id: "g1", name: "Developers Hub" }],
+        privates: [{ id: "p1", name: "John Doe" }],
+      })
+      setView("menu")
+    } else {
+      setError("StringSession noto‘g‘ri yoki eskirgan")
+    }
+    setIsLoading(false)
+  }
+
+  // 2 - section_menu() logic
+  const handleSelectCategory = (category: "Channels" | "Groups" | "Private Chats") => {
+    setCurrentCategory(category)
+  }
+
+  // 3 - view_messages() logic
+  const handleViewChat = (chat: any) => {
+    setSelectedChat(chat)
+    setMessages([
+      { sender: "Unknown", text: "Welcome to " + chat.name, date: "2024-01-04 10:00", is_own: false },
+      {
+        sender: "Conor",
+        text: "This message is from your Python logic check!",
+        date: "2024-01-04 10:05",
+        is_own: true,
+      },
+    ])
+    setView("messages")
+  }
+
+  // 1 - Login Screen
+  if (view === "login") {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-muted/20">
-        <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-border space-y-6">
-          <div className="text-center space-y-2">
-            <h1 className="text-2xl font-bold text-primary">Telegram Web</h1>
-            <p className="text-sm text-muted-foreground">Please enter your StringSession to connect</p>
+      <div className="w-full h-full flex items-center justify-center bg-[#f0f2f5]">
+        <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg space-y-6">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-[#0088cc]">Telegram Logic Terminal</h1>
+            <p className="text-sm text-muted-foreground mt-2">StringSession ni kiriting</p>
           </div>
           <div className="space-y-4">
             <Input
-              placeholder="StringSession (e.g. 1BVjk...)"
+              placeholder="> session_string"
               value={sessionString}
               onChange={(e) => setSessionString(e.target.value)}
-              className="font-mono text-xs h-12"
+              className="font-mono text-xs h-12 border-[#0088cc]/20 focus-visible:ring-[#0088cc]"
             />
+            {error && <p className="text-red-500 text-xs font-mono">{error}</p>}
             <Button
-              className="w-full h-12 text-base font-semibold"
-              onClick={() => {
-                if (sessionString.trim()) {
-                  setIsConnected(true)
-                }
-              }}
+              className="w-full h-12 bg-[#0088cc] hover:bg-[#0077b5] text-white font-bold"
+              onClick={handleConnect}
+              disabled={isLoading}
             >
-              Connect Client
+              {isLoading ? "ULANMOQDA..." : "CONNECT"}
             </Button>
-            <div className="flex justify-center items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-wider">
-              <span>API_ID: 21180544</span>
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-              <span>API_HASH: 9af42e...</span>
-            </div>
           </div>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="w-full h-full max-w-[1600px] lg:h-[95vh] lg:rounded-xl shadow-2xl flex bg-white overflow-hidden border border-border">
-      {/* Sidebar / Chat List */}
-      <div
-        className={cn(
-          "w-full md:w-[350px] lg:w-[400px] border-r border-border flex flex-col shrink-0 transition-all duration-300",
-          !isMobileListVisible && "hidden md:flex",
-        )}
-      >
-        <div className="p-3 space-y-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
-              <Menu className="h-6 w-6" />
-            </Button>
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search"
-                className="pl-10 bg-muted/50 border-none h-10 rounded-full focus-visible:ring-primary"
-              />
-            </div>
-          </div>
-
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full grid grid-cols-4 bg-transparent p-0 gap-1 h-auto">
-              {["All", "Channels", "Groups", "Privates"].map((tab) => (
-                <TabsTrigger
-                  key={tab.toLowerCase()}
-                  value={tab.toLowerCase()}
-                  className="rounded-full py-1.5 px-2 text-[13px] data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-none"
-                >
-                  {tab}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <ScrollArea className="flex-1">
-          {filteredChats.map((chat) => (
-            <div
-              key={chat.id}
-              onClick={() => {
-                setSelectedChat(chat)
-                setIsMobileListVisible(false)
-              }}
-              className={cn(
-                "flex items-center gap-3 p-3 cursor-pointer hover:bg-muted/50 transition-colors group relative",
-                selectedChat?.id === chat.id && "bg-primary/5 hover:bg-primary/5",
-              )}
+  // 2 - Main Menu (Channels, Groups, Private Chats)
+  if (view === "menu" && !currentCategory) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#f0f2f5]">
+        <div className="w-full max-w-md p-6 bg-white rounded-2xl shadow-lg">
+          <h2 className="text-xl font-bold mb-6 text-center border-b pb-4">🏠 ASOSIY MENYU</h2>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14 text-lg border-[#0088cc]/10 hover:bg-[#0088cc]/5 bg-transparent"
+              onClick={() => handleSelectCategory("Channels")}
             >
-              <Avatar className="h-14 w-14">
-                <AvatarImage src={chat.avatar || "/placeholder.svg"} alt={chat.name} />
-                <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                  {chat.name.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              1️⃣ Channels ({dialogs.channels.length})
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14 text-lg border-[#0088cc]/10 hover:bg-[#0088cc]/5 bg-transparent"
+              onClick={() => handleSelectCategory("Groups")}
+            >
+              2️⃣ Groups ({dialogs.groups.length})
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start h-14 text-lg border-[#0088cc]/10 hover:bg-[#0088cc]/5 bg-transparent"
+              onClick={() => handleSelectCategory("Private Chats")}
+            >
+              3️⃣ Private Chats ({dialogs.privates.length})
+            </Button>
+            <Button variant="ghost" className="w-full h-12 mt-4 text-red-500" onClick={() => setView("login")}>
+              0️⃣ Exit
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-              <div className="flex-1 min-w-0 border-b border-border/50 group-last:border-none pb-3 pt-1">
-                <div className="flex justify-between items-baseline mb-0.5">
-                  <h3 className="font-semibold text-[15px] truncate flex items-center gap-1.5">
-                    {chat.type === "channel" && <Hash className="h-3.5 w-3.5 text-primary" />}
-                    {chat.type === "group" && <Users className="h-3.5 w-3.5 text-primary" />}
-                    {chat.name}
-                  </h3>
-                  <span className="text-[12px] text-muted-foreground shrink-0">{chat.time}</span>
+  // 2 - Section Menu (List of chats in category)
+  if (view === "menu" && currentCategory) {
+    const list =
+      currentCategory === "Channels"
+        ? dialogs.channels
+        : currentCategory === "Groups"
+          ? dialogs.groups
+          : dialogs.privates
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-[#f0f2f5]">
+        <div className="w-full max-w-md p-6 bg-white rounded-2xl shadow-lg flex flex-col h-[80vh]">
+          <h2 className="text-xl font-bold mb-4 border-b pb-2 flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setCurrentCategory(null)}>
+              <ArrowLeft />
+            </Button>
+            📂 {currentCategory.toUpperCase()}
+          </h2>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-2">
+              {list.map((d) => (
+                <div
+                  key={d.id}
+                  className="p-3 border rounded-xl hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleViewChat(d)}
+                >
+                  <p className="font-semibold text-sm">• {d.name}</p>
+                  <p className="text-[10px] text-muted-foreground">ID: {d.id}</p>
                 </div>
-                <div className="flex justify-between items-center gap-2">
-                  <p className="text-[14px] text-muted-foreground truncate leading-tight flex-1">{chat.lastMessage}</p>
-                  {chat.unread && (
-                    <span className="bg-primary text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
+              ))}
+            </div>
+          </ScrollArea>
+          <Button variant="ghost" className="w-full mt-4" onClick={() => setCurrentCategory(null)}>
+            0️⃣ Ortga
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // 3 - Message Viewer
+  return (
+    <div className="w-full h-full flex flex-col bg-[#e6ebee]">
+      <header className="h-16 bg-[#0088cc] text-white flex items-center px-4 shrink-0 shadow-md">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-white hover:bg-white/10 mr-2"
+          onClick={() => setView("menu")}
+        >
+          <ArrowLeft className="h-6 w-6" />
+        </Button>
+        <div>
+          <h2 className="font-bold text-sm">📨 {selectedChat?.name}</h2>
+          <p className="text-[10px] opacity-80">Oxirgi xabarlar</p>
+        </div>
+      </header>
+
+      <ScrollArea className="flex-1 p-4">
+        <div className="max-w-[600px] mx-auto space-y-3">
+          {messages.map((msg, i) => (
+            <div key={i} className={cn("flex flex-col", msg.is_own ? "items-end" : "items-start")}>
+              <div
+                className={cn(
+                  "px-3 py-2 rounded-2xl max-w-[85%] shadow-sm text-sm relative",
+                  msg.is_own ? "bg-[#effdde] text-black rounded-tr-none" : "bg-white text-black rounded-tl-none",
+                )}
+              >
+                {!msg.is_own && <p className="text-[11px] font-bold text-[#0088cc] mb-1">{msg.sender}</p>}
+                <p>{msg.text}</p>
+                <p className="text-[9px] text-muted-foreground text-right mt-1 opacity-60">{msg.date}</p>
               </div>
             </div>
           ))}
-        </ScrollArea>
-      </div>
+        </div>
+      </ScrollArea>
 
-      {/* Chat Area */}
-      <div className={cn("flex-1 flex flex-col bg-[#e6ebee] relative", isMobileListVisible && "hidden md:flex")}>
-        {selectedChat ? (
-          <>
-            {/* Chat Header */}
-            <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 z-10">
-              <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileListVisible(true)}>
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedChat.avatar || "/placeholder.svg"} />
-                  <AvatarFallback>{selectedChat.name[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <h2 className="font-bold text-[15px] leading-tight">{selectedChat.name}</h2>
-                  <span className="text-[12px] text-primary">online</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex">
-                  <Search className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex">
-                  <Phone className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-muted-foreground">
-                  <MoreVertical className="h-5 w-5" />
-                </Button>
-              </div>
-            </header>
-
-            {/* Messages Area */}
-            <ScrollArea className="flex-1 p-4 bg-[url('https://blob.v0.app/telegram-pattern.png')] bg-repeat">
-              <div className="max-w-[800px] mx-auto space-y-4 py-4">
-                <div className="flex justify-center">
-                  <span className="bg-black/10 text-white text-[12px] px-3 py-1 rounded-full backdrop-blur-md">
-                    January 4
-                  </span>
-                </div>
-
-                <Message
-                  text="Hello! How is the Telethon integration going?"
-                  time="10:00 AM"
-                  isOwn={false}
-                  sender="John Doe"
-                />
-                <Message text="It's going great! I've visualized the dialog categories." time="10:01 AM" isOwn={true} />
-                <Message
-                  text="The dodgerblue theme matches the Telegram vibe perfectly."
-                  time="10:02 AM"
-                  isOwn={true}
-                />
-              </div>
-            </ScrollArea>
-
-            {/* Input Area */}
-            <div className="p-3 bg-white border-t border-border">
-              <div className="max-w-[800px] mx-auto flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-muted-foreground shrink-0">
-                  <MoreVertical className="h-6 w-6 rotate-90" />
-                </Button>
-                <div className="flex-1 relative">
-                  <Input
-                    placeholder="Write a message..."
-                    className="h-11 border-none bg-muted/50 focus-visible:ring-0 rounded-xl pr-12"
-                  />
-                  <Button
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 bg-transparent hover:bg-transparent text-primary"
-                  >
-                    <span className="text-xl">😊</span>
-                  </Button>
-                </div>
-                <Button
-                  size="icon"
-                  className="rounded-full h-11 w-11 bg-primary hover:bg-primary/90 shadow-lg shrink-0"
-                >
-                  <Send className="h-5 w-5 text-white" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/20">
-            <div className="bg-black/5 p-2 rounded-full mb-2">
-              <Info className="h-6 w-6" />
-            </div>
-            <p className="text-[14px]">Select a chat to start messaging</p>
-          </div>
-        )}
-      </div>
+      <footer className="p-4 bg-white border-t">
+        <Button variant="outline" className="w-full bg-transparent" onClick={() => setView("menu")}>
+          ⬅️ Ortga qaytish
+        </Button>
+      </footer>
     </div>
   )
 }
