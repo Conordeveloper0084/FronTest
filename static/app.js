@@ -1,34 +1,39 @@
-let SESSION = localStorage.getItem("session");
+let SESSION = null;
 
-async function connect() {
+// LOGIN
+async function login() {
   const session = document.getElementById("sessionInput").value;
+  const status = document.getElementById("loginStatus");
+
+  status.innerText = "Ulanmoqda...";
 
   const res = await fetch("/connect", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session })
   });
 
-  const data = await res.json();
-
   if (!res.ok) {
-    document.getElementById("status").innerText = data.detail || "Xato";
+    status.innerText = "❌ Session noto‘g‘ri";
     return;
   }
 
-  localStorage.setItem("session", session);
+  const data = await res.json();
+  status.innerText = "✅ Ulandi: @" + data.username;
+
   SESSION = session;
 
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("appBox").style.display = "flex";
 
   loadDialogs();
 }
 
+// LOAD DIALOGS
 async function loadDialogs() {
   const res = await fetch("/dialogs", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session: SESSION })
   });
 
@@ -44,10 +49,11 @@ async function loadDialogs() {
   });
 }
 
+// LOAD MESSAGES
 async function loadMessages(dialogId) {
   const res = await fetch(`/messages/${dialogId}`, {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session: SESSION })
   });
 
@@ -61,11 +67,4 @@ async function loadMessages(dialogId) {
     div.innerText = m.text;
     box.appendChild(div);
   });
-}
-
-// auto-login
-if (SESSION) {
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("app").classList.remove("hidden");
-  loadDialogs();
 }

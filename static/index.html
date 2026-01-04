@@ -7,14 +7,16 @@
 </head>
 <body>
 
-<div class="login" id="login">
+<!-- LOGIN -->
+<div class="login" id="loginBox">
   <h2>Hasker Login</h2>
   <input id="sessionInput" placeholder="StringSession kiriting" />
-  <button onclick="connect()">Ulanish</button>
-  <p id="status"></p>
+  <button onclick="login()">Ulanish</button>
+  <p id="loginStatus"></p>
 </div>
 
-<div class="app hidden" id="app">
+<!-- APP -->
+<div class="app" id="appBox" style="display:none;">
   <div class="sidebar">
     <h2>Chats</h2>
     <ul id="dialogs"></ul>

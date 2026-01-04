@@ -4,6 +4,20 @@ body {
   background: #eef3f7;
 }
 
+.login {
+  padding: 40px;
+}
+
+.login input {
+  padding: 10px;
+  width: 300px;
+}
+
+.login button {
+  padding: 10px 20px;
+  margin-left: 10px;
+}
+
 .app {
   display: flex;
   height: 100vh;
@@ -20,6 +34,13 @@ body {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
 }
 
 .message {
@@ -27,7 +48,6 @@ body {
   padding: 10px 14px;
   margin: 8px 0;
   border-radius: 18px;
-  word-wrap: break-word;
 }
 
 .in {
@@ -39,22 +59,4 @@ body {
   background: dodgerblue;
   color: white;
   align-self: flex-end;
-}
-
-.hidden {
-  display: none;
-}
-
-.login {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.login input {
-  width: 400px;
-  padding: 10px;
-  margin: 10px 0;
 }
