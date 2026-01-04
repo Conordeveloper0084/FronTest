@@ -107,6 +107,14 @@ async def dialogs(session: SessionIn):
 
     return result
 
+@app.get("/")
+def root():
+    return {"status": "Hasker API is running"}
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 
 @app.post("/messages/{dialog_id}", response_model=List[MessageOut])
 async def messages(dialog_id: int, session: SessionIn):
