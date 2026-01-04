@@ -7,7 +7,14 @@
 </head>
 <body>
 
-<div class="app">
+<div class="login" id="login">
+  <h2>Hasker Login</h2>
+  <input id="sessionInput" placeholder="StringSession kiriting" />
+  <button onclick="connect()">Ulanish</button>
+  <p id="status"></p>
+</div>
+
+<div class="app hidden" id="app">
   <div class="sidebar">
     <h2>Chats</h2>
     <ul id="dialogs"></ul>
