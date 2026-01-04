@@ -18,3 +18,7 @@ def root():
     index_path = os.path.join(BASE_DIR, "static", "index.html")
     with open(index_path, "r", encoding="utf-8") as f:
         return f.read()
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
