@@ -1,9 +1,13 @@
 let SESSION = null;
 
-// LOGIN
 async function login() {
-  const session = document.getElementById("sessionInput").value;
+  const session = document.getElementById("sessionInput").value.trim();
   const status = document.getElementById("loginStatus");
+
+  if (!session) {
+    status.innerText = "Session kiriting";
+    return;
+  }
 
   status.innerText = "Ulanmoqda...";
 
@@ -14,14 +18,14 @@ async function login() {
   });
 
   if (!res.ok) {
-    status.innerText = "❌ Session noto‘g‘ri";
+    status.innerText = "❌ Session noto‘g‘ri yoki band";
     return;
   }
 
   const data = await res.json();
-  status.innerText = "✅ Ulandi: @" + data.username;
-
   SESSION = session;
+
+  status.innerText = "✅ Ulandi: @" + data.username;
 
   document.getElementById("loginBox").style.display = "none";
   document.getElementById("appBox").style.display = "flex";
@@ -29,7 +33,6 @@ async function login() {
   loadDialogs();
 }
 
-// LOAD DIALOGS
 async function loadDialogs() {
   const res = await fetch("/dialogs", {
     method: "POST",
@@ -49,7 +52,6 @@ async function loadDialogs() {
   });
 }
 
-// LOAD MESSAGES
 async function loadMessages(dialogId) {
   const res = await fetch(`/messages/${dialogId}`, {
     method: "POST",
