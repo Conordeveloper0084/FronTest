@@ -1,5 +1,7 @@
 import asyncio
 import sys
+import os
+import tempfile
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import RPCError
@@ -17,9 +19,18 @@ except ImportError:
     print("❌ PyQt6 topilmadi. Iltimos o'rnating: pip install PyQt6")
     sys.exit(1)
 
-# 🔐 BU MA'LUMOTLAR DOIMIY
-API_ID = 21180544
-API_HASH = "9af42e30dc71d92303e750f471f26a5e"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_ID = int(os.getenv("TELEGRAM_API_ID"))
+API_HASH = os.getenv("TELEGRAM_API_HASH")
+
+if not API_ID or not API_HASH:
+    raise RuntimeError("❌ TELEGRAM_API_ID yoki TELEGRAM_API_HASH topilmadi (.env tekshiring)")
+
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "hasker_media")
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 class HaskerUI(QMainWindow):
     def __init__(self):
@@ -190,29 +201,108 @@ class HaskerUI(QMainWindow):
         asyncio.ensure_future(self.load_messages(dialog))
 
     async def load_messages(self, dialog):
+        """
+        Telegram-style chat bubbles:
+        - Incoming messages: LEFT, white rounded bubble
+        - Outgoing messages: RIGHT, dodgerblue rounded bubble
+        - Each message is a compact bubble (not full-width rows)
+        """
         self.message_browser.clear()
+
         try:
-            messages = []
+            blocks = []
+
             async for msg in self.client.iter_messages(dialog.entity, limit=50):
-                sender = "Siz" if msg.out else (msg.sender.first_name if msg.sender else "Noma'lum")
-                time = msg.date.strftime("%H:%M")
-                text = msg.text or "[Media]"
-                
-                color = "#1e88e5" if msg.out else "#333"
-                align = "right" if msg.out else "left"
-                bg = "#e3f2fd" if msg.out else "white"
-                
-                html = f"""
-                <div style='text-align: {align}; margin-bottom: 10px;'>
-                    <div style='display: inline-block; background-color: {bg}; padding: 10px; border-radius: 10px; border: 1px solid #ddd; max-width: 80%;'>
-                        <b style='color: {color};'>{sender}</b> <small style='color: #999;'>{time}</small><br>
-                        {text}
+                is_out = msg.out
+
+                # Time
+                time_str = msg.date.strftime("%H:%M") if msg.date else ""
+
+                # Sender name (only for incoming)
+                sender_html = ""
+                if not is_out and msg.sender:
+                    sender_html = f"""
+                    <div style="
+                        font-size:11px;
+                        font-weight:600;
+                        color:#1e88e5;
+                        margin-bottom:4px;
+                    ">
+                        {msg.sender.first_name or "Noma'lum"}
+                    </div>
+                    """
+
+                # Text
+                text_html = (msg.text or "").replace("\n", "<br>")
+
+                # Media (photos)
+                media_html = ""
+                if msg.photo:
+                    try:
+                        path = os.path.join(TEMP_DIR, f"{msg.id}.jpg")
+                        if not os.path.exists(path):
+                            await msg.download_media(file=path)
+                        media_html = f"""
+                        <img src="{path}" style="
+                            max-width:260px;
+                            border-radius:16px;
+                            margin-bottom:6px;
+                        ">
+                        """
+                    except Exception:
+                        media_html = "<i>[Rasm yuklanmadi]</i><br>"
+
+                # Bubble layout
+                align = "flex-end" if is_out else "flex-start"
+                bubble_bg = "#1e90ff" if is_out else "#ffffff"
+                text_color = "#ffffff" if is_out else "#000000"
+
+                bubble_html = f"""
+                <div style="
+                    display:flex;
+                    justify-content:{align};
+                    margin:8px 0;
+                ">
+                    <div style="
+                        background:{bubble_bg};
+                        color:{text_color};
+                        padding:8px 12px;
+                        border-radius:18px;
+                        border-top-left-radius:{'18px' if is_out else '6px'};
+                        border-top-right-radius:{'6px' if is_out else '18px'};
+                        max-width:70%;
+                        width:fit-content;
+                        font-size:14px;
+                        line-height:1.4;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.12);
+                        word-break:break-word;
+                    ">
+                        {sender_html}
+                        {media_html}
+                        <div>{text_html}</div>
+                        <div style="
+                            text-align:right;
+                            font-size:10px;
+                            opacity:0.6;
+                            margin-top:4px;
+                        ">
+                            {time_str}
+                        </div>
                     </div>
                 </div>
                 """
-                messages.append(html)
-            
-            self.message_browser.setHtml("".join(reversed(messages)))
+
+                blocks.append(bubble_html)
+
+            self.message_browser.setHtml(
+                "<body style='background:#eef3f7; padding:12px;'>" +
+                "".join(reversed(blocks)) +
+                "</body>"
+            )
+
+            bar = self.message_browser.verticalScrollBar()
+            bar.setValue(bar.maximum())
+
         except Exception as e:
             self.message_browser.setText(f"Xato: {str(e)}")
 
